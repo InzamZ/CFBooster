@@ -1,5 +1,8 @@
 # coding=utf8
 from __future__ import print_function
+from unicodedata import name
+
+from numpy import integer
 
 # CFBooster by TLE
 # Ver 0.12 (2020-01-09)
@@ -63,6 +66,7 @@ https_proxy = "http://127.0.0.1:7890"
 
 proxyDict = {"http": http_proxy, "https": https_proxy}
 
+AtcoderRound = False
 
 from bs4 import BeautifulSoup
 import requests
@@ -85,17 +89,40 @@ else:
     except NameError:
         pass
     round=input()
-print('round',round)
-r=requests.get('https://codeforces.com/contest/'+round+'/problems', proxies=proxyDict)
-print('fetched full problemset. length '+str(len(r.text)))
-soup = BeautifulSoup(r.text, 'html.parser')
-l=soup.find_all(class_='problemindexholder')
+
 pro={}
-for c in l:
-    pro[c['problemindex']]=c
-problems=list(pro.keys())
-problems.sort()
-print('found problems: '+','.join(problems))
+problems=[]
+
+if round is integer:
+    AtcoderRound = False
+    print('Codeforces round',round)
+    r=requests.get('https://codeforces.com/contest/'+round+'/problems', proxies=proxyDict)
+    print('fetched full problemset. length '+str(len(r.text)))
+    soup = BeautifulSoup(r.text, 'html.parser')
+    l=soup.find_all(class_='problemindexholder')
+    for c in l:
+        pro[c['problemindex']]=c
+    problems=list(pro.keys())
+    print('found problems: '+','.join(problems))
+if round.find('abc') != -1 or round.find('arc') != -1 or round.find('agc') != -1:
+    AtcoderRound = True
+    print('Atcoder Round '+round)
+    r=requests.get('https://atcoder.jp/contests/'+round+'/tasks_print', proxies=proxyDict)
+    print('fetched full problemset. length '+str(len(r.text)))
+    soup = BeautifulSoup(r.text, 'html.parser')
+    l=soup.find_all(class_='col-sm-12')
+    for c in l:
+        protitle = c.find_all(name='span',class_ = 'h2')
+        if len(protitle)==0:
+            continue
+        protitle = protitle[0].contents[0]
+        if protitle[0:2] == 'Ex':
+            pro['Ex']=c
+        else:
+            pro[protitle[0:1]]=c
+    problems=list(pro.keys())
+    print('found problems: '+','.join(problems))
+
 #from https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -510,6 +537,133 @@ def parse(p):
     code2=code_template.replace('[CODES]',CODES).replace('[VARS]',DEFS)+tail
     code2=code2.replace('in_temp','IN_TEMP_'+rng_str).replace('out_temp','OUT_TEMP_'+rng_str)
     write_file(round+p+"-i.cpp",code2)
+
+def parseAtcoder(p):
+    rng_str=p+'_'+''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(7))
+    inputs=[]
+    outputs=[]
+    
+    for tt in pro[p].find_all(class_='part'):
+        section = tt.find(name='section')
+        if section.find(name='h3').text.find('Sample Input ')!=-1:
+            strr=section.find(name='pre').text
+            strr=strr.replace('\r\n','\n')
+            strr=strr.replace('\r','\n')
+            while strr[0]=='\n':
+                strr=strr[1:]
+            if strr[-1]!='\n':
+                strr=strr+'\n'
+            inputs.append(strr)
+        elif section.find(name='h3').text.find('Sample Output ')!=-1:
+            strr=section.find(name='pre').text
+            strr=strr.replace('\r\n','\n')
+            strr=strr.replace('\r','\n')
+            while strr[0]=='\n':
+                strr=strr[1:]
+            if strr[-1]!='\n':
+                strr=strr+'\n'
+            outputs.append(strr)
+    # ps=parse_i(p,inputs)
+    tail="/*\n"
+    for w in range(len(inputs)):
+        tail+="*o* Sample Input "+str(w+1)+":\n"
+        tail+=inputs[w]
+        tail+="*o* Sample Output "+str(w+1)+":\n"
+        tail+=outputs[w]
+    tail+='*o* This chunk of comment is used for auto-testing. Please don\'t modify.\n*/'
+    code1=code_template.replace('[CODES]','').replace('[VARS]','')+tail
+    code1=code1.replace('in_temp','IN_TEMP_'+rng_str).replace('out_temp','OUT_TEMP_'+rng_str)
+    write_file(p+".cpp",code1)
+
+    # Don't need to parse input
+    return 
+
+    if ps==None:
+        print('cannot parse input for problem '+p+'.')
+        return
+    rng_str=p+'_'+''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(7))
+    first_var,is_arr,var_type,program=ps
+    ints=[]
+    lls=[]
+    dbs=[]
+    strs=[]
+    int_vecs=[]
+    ll_vecs=[]
+    db_vecs=[]
+    str_vecs=[]
+    for c in is_arr.keys():
+        if var_type[c]==0:
+            if is_arr[c]:
+                int_vecs.append(c)
+            else:
+                ints.append(c)
+        elif var_type[c]==1:
+            if is_arr[c]:
+                ll_vecs.append(c)
+            else:
+                lls.append(c)
+        elif var_type[c]==2:
+            if is_arr[c]:
+                db_vecs.append(c)
+            else:
+                dbs.append(c)
+        else:
+            if is_arr[c]:
+                str_vecs.append(c)
+            else:
+                strs.append(c)
+    for_var='_'
+    if not 'i' in is_arr.keys():
+        for_var='i'
+    DEFS=""
+    CODES=""
+    if True: #stupid padding
+        if len(ints)!=0:
+            DEFS=DEFS+"int "+",".join(ints)+';\n'
+        if len(lls)!=0:
+            DEFS=DEFS+"long long "+",".join(lls)+';\n'
+        if len(dbs)!=0:
+            DEFS=DEFS+"double "+",".join(dbs)+';\n'
+        if len(strs)!=0:
+            DEFS=DEFS+"string "+",".join(strs)+';\n'
+        if len(int_vecs)!=0:
+            DEFS=DEFS+"vector<int> "+",".join(int_vecs)+';\n'
+        if len(ll_vecs)!=0:
+            DEFS=DEFS+"vector<long long> "+",".join(ll_vecs)+';\n'
+        if len(db_vecs)!=0:
+            DEFS=DEFS+"vector<double> "+",".join(db_vecs)+';\n'
+        if len(str_vecs)!=0:
+            DEFS=DEFS+"vector<string> "+",".join(str_vecs)+';\n'
+    if first_var==None:
+        for pp in program:
+            if pp[0]==None:
+                CODES=CODES+padding+"cin>>"+'>>'.join(pp[1])+';\n'
+            else:
+                for u in pp[1]:
+                    CODES=CODES+padding+u+".resize("+pp[0]+");\n"
+                CODES=CODES+padding+"for(int "+for_var+"=0;"+for_var+"<"+pp[0]+";++"+for_var+") {\n"+\
+                padding+padding+"cin>>"+'>>'.join(list(map(lambda x:x+"["+for_var+"]",pp[1])))+";\n"+\
+                padding+"}\n"
+    else:
+        CODES=CODES+padding+"cin>>"+first_var+';\n'
+        CODES=CODES+padding+"while("+first_var+"--) {\n"
+        for pp in program:
+            if pp[0]==None:
+                CODES=CODES+padding+padding+"cin>>"+'>>'.join(pp[1])+';\n'
+            else:
+                for u in pp[1]:
+                    CODES=CODES+padding+padding+u+".resize("+pp[0]+");\n"
+                CODES=CODES+padding+padding+"for(int "+for_var+"=0;"+for_var+"<"+pp[0]+";++"+for_var+") {\n"+\
+                padding+padding+padding+"cin>>"+'>>'.join(list(map(lambda x:x+"["+for_var+"]",pp[1])))+";\n"\
+                +padding+padding+"}\n"
+        CODES=CODES+padding+"}\n"
+    code2=code_template.replace('[CODES]',CODES).replace('[VARS]',DEFS)+tail
+    code2=code2.replace('in_temp','IN_TEMP_'+rng_str).replace('out_temp','OUT_TEMP_'+rng_str)
+    write_file(round+p+"-i.cpp",code2)
+
 for o in problems:
-    parse(o)
+    if AtcoderRound == False: 
+        parse(o)
+    else:
+        parseAtcoder(o)
 print('all done.')
