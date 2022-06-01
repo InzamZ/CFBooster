@@ -148,6 +148,8 @@ async def post_handler(request):
     if reqJson["group"][:8] == "CodeChef":
         p = string.ascii_uppercase[proCnt]
         proCnt += 1
+    if reqJson["group"] == "NowCoder":
+        p = reqJson["url"][-1:]
     rng_str = (
         p
         + "_"
