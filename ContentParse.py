@@ -150,6 +150,8 @@ async def post_handler(request):
         proCnt += 1
     if reqJson["group"] == "NowCoder":
         p = reqJson["url"][-1:]
+    if reqJson["group"] == "Luogu":
+        p = reqJson["name"].split(" ")[0]
     rng_str = (
         p
         + "_"
