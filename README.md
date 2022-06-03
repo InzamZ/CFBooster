@@ -1,5 +1,12 @@
 # CFBooster
 
+## Something diff
+This is forked from [CFBooster](https://github.com/fjzzq2002/CFBooster).
+
+To parse more platforms , I use a extension [competitive-companion](https://github.com/jmerle/competitive-companion) so that this tools can be used in both Windows and Ubuntu. In fact, to use it you just need python3 and a browser with extension competitive-companion worked.
+
+## Upstream resp readme
+
 #### What's this?
 
 A small tool that may help you a bit in Codeforces contests. **(Currently C++ only)**
